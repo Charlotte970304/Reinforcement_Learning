@@ -1,0 +1,114 @@
+<!-- grid.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ n }}x{{ n }} Grid World</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+        td {
+            border: 1px solid black;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ n }}x{{ n }} Grid World</h1>
+    <table>
+        {% for i in range(n) %}
+        <tr>
+            {% for j in range(n) %}
+            <td data-x="{{ i }}" data-y="{{ j }}">{{ range(1, 10) | random }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    <p><a href="/">Back</a></p>
+    <button id="submit" data-n="{{ n }}">Submit</button>
+
+    <script>
+        $(document).ready(function() {
+            var n = parseInt($('#submit').data('n'));
+            var startCell = null;
+            var endCell = null;
+            var blockedCells = [];
+            var maxBlockedCells = 3;
+
+            $('td').on('click', function() {
+                var x = $(this).data('x');
+                var y = $(this).data('y');
+                var cell = $(this);
+
+                if (startCell === null) {
+                    startCell = cell;
+                    cell.css('background-color', 'green');
+                } else if (endCell === null && startCell[0] !== cell[0]) {
+                    endCell = cell;
+                    cell.css('background-color', 'red');
+                } else if (blockedCells.length < maxBlockedCells && startCell[0] !== cell[0] && endCell[0] !== cell[0]) {
+                    if (!blockedCells.includes(cell[0])) {
+                        blockedCells.push(cell[0]);
+                        cell.css('background-color', 'gray');
+                    }
+                }
+            });
+        function drawOptimalPath(optimal_path) {
+            for (var i = 0; i < optimal_path.length; i++) {
+                var cell = $('td[data-x="' + optimal_path[i].x + '"][data-y="' + optimal_path[i].y + '"]');
+                if (i === 0) {
+                    cell.css('background-color', 'green');
+                } else if (i === optimal_path.length - 1) {
+                    cell.css('background-color', 'red');
+                } else {
+                    cell.css('background-color', 'yellow');
+                }
+            }
+        }
+            $('#submit').on('click', function() {
+                if (startCell !== null && endCell !== null) {
+                    var startCellPos = {x: startCell.data('x'), y: startCell.data('y')};
+                    var endCellPos = {x: endCell.data('x'), y: endCell.data('y')};
+                    var blockedCellPos = blockedCells.map(function(cell) {
+                        return {x: $(cell).data('x'), y: $(cell).data('y')};
+                    });
+		    var gridData = [];
+		    for (var i = 0; i < n; i++) {
+		        var rowData = [];
+		        for (var j = 0; j < n; j++) {
+		            rowData.push(parseInt($('td[data-x="' + i + '"][data-y="' + j + '"]').text()));
+		        }
+		        gridData.push(rowData);
+		    };
+                    $.ajax({
+                        url: '/submit',
+                        method: 'POST',
+                        data: {
+                            start: JSON.stringify(startCellPos),
+                            end: JSON.stringify(endCellPos),
+                            blocked: JSON.stringify(blockedCellPos),
+                            n: $('#submit').data('n'),
+                            grid: JSON.stringify(gridData)
+                        },
+                        success: function(response) {
+                            console.log(response);
+                            drawOptimalPath(response.optimal_path);
+                        },
+                        error: function(error) {
+                            console.log(error);
+                        }
+                    });
+                } else {
+                    alert('Please set start cell, end cell, and block cells before submitting.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
